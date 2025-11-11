@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Fee" ADD COLUMN     "paidBy" INTEGER,
+ADD COLUMN     "paidDate" TIMESTAMP(3);
+
+-- AddForeignKey
+ALTER TABLE "Fee" ADD CONSTRAINT "Fee_paidBy_fkey" FOREIGN KEY ("paidBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

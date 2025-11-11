@@ -1,0 +1,261 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  registrationNo    String    @unique
+  name              String
+  fatherName        String
+  email             String    @unique
+  password          String
+  role              Role
+  mobileNumber      String
+  permanentAddress  String
+  currentAddress    String
+  expenses          Expense[]
+  fees              Fee[]
+  salaries          Salary[]
+  createdAt         DateTime  @default(now())
+}
+
+model Class {
+  id                Int       @id @default(autoincrement())
+  name              String    @unique
+  program           String
+  description       String?
+  sections          Section[]
+  students          Student[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Section {
+  id                Int       @id @default(autoincrement())
+  name              String
+  classId           Int
+  class             Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  students          Student[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([classId, name])
+}
+
+model Student {
+  id                Int              @id @default(autoincrement())
+  registrationNo    String           @unique
+  name              String
+  fatherName        String
+  rollNo            String           @unique
+  nic               String?          @unique
+  gender            Gender?
+  religion          String?
+  dateOfBirth       DateTime?
+  joiningDate       DateTime?        // Date when student joined the school
+  program           String
+  session           String
+  class             String
+  section           String?          // Legacy field, kept for backward compatibility
+  phoneNumber       String
+  email             String?
+  currentAddress    String
+  permanentAddress  String
+  status            StudentStatus    @default(ACTIVE)
+  classId           Int?
+  classRelation     Class?           @relation(fields: [classId], references: [id])
+  sectionId         Int?
+  sectionRelation   Section?         @relation(fields: [sectionId], references: [id])
+  fees              Fee[]
+  promotions        StudentPromotion[]
+  statusLogs        StudentStatusLog[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model StudentPromotion {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  student     Student  @relation(fields: [studentId], references: [id])
+  oldClass    String
+  newClass    String
+  oldSession  String
+  newSession  String
+  status      String   // "PROMOTED" or "REPEATED"
+  promotedBy  Int?     // User ID who performed the promotion
+  createdAt   DateTime @default(now())
+}
+
+model StudentStatusLog {
+  id          Int          @id @default(autoincrement())
+  studentId   Int
+  student     Student      @relation(fields: [studentId], references: [id])
+  oldStatus   StudentStatus
+  newStatus   StudentStatus
+  description String?      // Reason/description for status change
+  actionDate  DateTime?    // Date when the action occurred (if not provided, uses createdAt)
+  changedBy   Int?         // User ID who made the change
+  createdAt   DateTime     @default(now())
+}
+
+model Employee {
+  id                Int      @id @default(autoincrement())
+  registrationNo    String   @unique
+  name              String
+  fatherName        String
+  position          String
+  phoneNumber       String
+  joiningDate       DateTime
+  salary            Float
+  emailAddress      String
+  currentAddress    String
+  permanentAddress  String
+  nic               String?
+  gender            Gender?
+  religion          String?
+  dateOfBirth       DateTime?
+  status            EmployeeStatus @default(ACTIVE)
+  salaries          Salary[]
+  statusLogs        EmployeeStatusLog[]
+  createdAt         DateTime @default(now())
+}
+
+model EmployeeStatusLog {
+  id          Int            @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee       @relation(fields: [employeeId], references: [id])
+  oldStatus   EmployeeStatus
+  newStatus   EmployeeStatus
+  description String?        // Reason/description for status change
+  actionDate  DateTime?      // Date when the action occurred (if not provided, uses createdAt)
+  changedBy   Int?           // User ID who made the change
+  createdAt   DateTime       @default(now())
+}
+
+model Program {
+  id          Int                @id @default(autoincrement())
+  name        String             @unique
+  description String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model ProgramFee {
+  id          Int      @id @default(autoincrement())
+  program     String   @unique
+  feeAmount   Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ProgramSession {
+  id        Int                @id @default(autoincrement())
+  program   String             // Program name (string)
+  session   String
+  isCurrent Boolean            @default(false)
+  startYear Int?
+  endYear   Int?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([program, session])
+  @@index([program, isCurrent])
+}
+
+model ProgramSessionFee {
+  id            Int             @id @default(autoincrement())
+  programId     Int
+  sessionId     Int
+  feeAmount     Float
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([programId, sessionId])
+  @@index([programId, isActive])
+  @@index([sessionId, isActive])
+}
+
+model Fee {
+  id                Int      @id @default(autoincrement())
+  amount            Float
+  month             String
+  paid              Boolean  @default(false)
+  paidDate          DateTime?
+  paidBy            Int?
+  user              User?   @relation(fields: [paidBy], references: [id])
+  studentId         Int
+  student           Student @relation(fields: [studentId], references: [id])
+  // Historical data - stores class, program, section, and session at the time of fee creation
+  historicalClass   String?  // Class at the time fee was created
+  historicalProgram String?  // Program at the time fee was created
+  historicalSection String?  // Section at the time fee was created
+  historicalSession String?  // Session at the time fee was created
+  createdAt         DateTime @default(now())
+}
+
+model Salary {
+  id          Int       @id @default(autoincrement())
+  amount      Float
+  month       String
+  paid        Boolean   @default(false)
+  paidDate    DateTime?
+  paidBy      Int?
+  user        User?     @relation(fields: [paidBy], references: [id])
+  employeeId  Int
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  expense     Expense?
+  createdAt   DateTime  @default(now())
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  category    String
+  description String
+  amount      Float
+  month       String
+  paid        Boolean  @default(false)
+  salaryId    Int?     @unique
+  salary      Salary?  @relation(fields: [salaryId], references: [id])
+  createdBy   Int
+  user        User     @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  ACCOUNTANT
+}
+
+enum StudentStatus {
+  ACTIVE
+  PROMOTED
+  REPEATED
+  GRADUATED
+  DROPPED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  RESIGNED
+  TERMINATED
+  RETIRED
+}
